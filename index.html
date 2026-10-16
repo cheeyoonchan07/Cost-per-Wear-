@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cost Per Wear | a closet ledger</title>
+<meta name="description" content="Track what each piece of clothing really costs per wear, find the clothes you never wear, and think twice before buying new.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #FFE9A6;      /* marigold paper */
+    --ink: #2A1A12;        /* warm black ink */
+    --ink-soft: #5A4636;
+    --tomato: #D2381F;
+    --tangerine: #FF7A1A;
+    --pink: #FF9DB5;
+    --sun: #FFD23F;
+    --leaf: #2F7D45;
+    --tag: #FFFFFF;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    background-color: var(--paper);
+    background-image: radial-gradient(rgba(42, 26, 18, 0.10) 1px, transparent 1px);
+    background-size: 18px 18px;
+    font-family: "Special Elite", "Courier New", monospace;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 40px 24px 56px; }
+  .hand { font-family: "Caveat", "Comic Sans MS", cursive; }
+  button, input, select { font: inherit; color: inherit; }
+  :focus-visible { outline: 3px dashed var(--tomato); outline-offset: 3px; }
+
+  /* ---------- header ---------- */
+  header { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
+  h1 { font-family: "Caveat", cursive; font-weight: 700; font-size: clamp(56px, 9vw, 92px); line-height: 0.9; margin: 0; letter-spacing: 0.5px; }
+  h1 em { font-style: normal; color: var(--tomato); }
+  .sub { margin: 10px 0 0; color: var(--ink-soft); max-width: 520px; }
+  .stamp {
+    flex: none; width: 128px; height: 128px; border-radius: 50%;
+    border: 3px solid var(--tomato); color: var(--tomato);
+    display: grid; place-items: center; text-align: center;
+    transform: rotate(-10deg); font-size: 13px; line-height: 1.25; text-transform: uppercase; letter-spacing: 1px;
+    box-shadow: inset 0 0 0 5px var(--paper), inset 0 0 0 7px var(--tomato);
+  }
+
+  /* ---------- shared card ---------- */
+  .card { background: var(--tag); border: 2px solid var(--ink); border-radius: 10px; box-shadow: 5px 5px 0 var(--ink); padding: 20px 22px; }
+  .label { font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--ink-soft); }
+  h2 { font-family: "Caveat", cursive; font-size: 38px; line-height: 1; margin: 0 0 12px; }
+
+  /* ---------- report card ---------- */
+  .report { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; padding: 0; margin-bottom: 32px; }
+  .stat { padding: 16px 20px; border-right: 2px dashed rgba(42,26,18,.35); }
+  .stat:last-child { border-right: 0; }
+  .stat .val { font-family: "Caveat", cursive; font-weight: 700; font-size: 44px; line-height: 1.05; display: block; margin-top: 2px; overflow-wrap: anywhere; }
+  .stat .note { font-size: 13px; color: var(--ink-soft); }
+
+  /* ---------- layout ---------- */
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 36px; align-items: start; }
+  aside { display: grid; gap: 28px; position: sticky; top: 20px; }
+
+  /* ---------- ghosts ---------- */
+  .ghosts { margin-bottom: 28px; background: var(--pink); }
+  .ghosts p.lead { margin: 0 0 12px; }
+  .ghost-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .ghost-list li { background: var(--tag); border: 2px solid var(--ink); border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .ghost-list .gname { font-family: "Caveat", cursive; font-weight: 700; font-size: 26px; line-height: 1; }
+  .ghost-list .gtip { font-size: 13px; color: var(--ink-soft); }
+
+  /* ---------- closet controls ---------- */
+  .closet-head { display: flex; align-items: end; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+  .closet-head h2 { margin: 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
+  .chip { background: var(--tag); border: 2px solid var(--ink); border-radius: 999px; padding: 4px 14px; cursor: pointer; font-size: 13px; text-transform: lowercase; }
+  .chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+  select { background: var(--tag); border: 2px solid var(--ink); border-radius: 8px; padding: 6px 10px; }
+
+  /* ---------- tags ---------- */
+  .closet { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 30px 24px; }
+  .tag {
+    position: relative; background: var(--tag); border: 2px solid var(--ink); border-radius: 10px;
+    padding: 34px 18px 18px; box-shadow: 4px 4px 0 var(--ink);
+    transition: transform .15s ease;
+  }
+  .tag:nth-child(3n+1) { transform: rotate(-1.2deg); }
+  .tag:nth-child(3n+2) { transform: rotate(0.9deg); }
+  .tag:nth-child(3n)   { transform: rotate(-0.4deg); }
+  .tag:hover, .tag:focus-within { transform: rotate(0deg) translateY(-2px); }
+  .tag::before { /* the hole */
+    content: ""; position: absolute; top: 10px; left: 50%; width: 14px; height: 14px; margin-left: -7px;
+    border-radius: 50%; border: 2px solid var(--ink); background: var(--paper);
+  }
+  .tag.ghost { background: #FFF4F6; }
+  .tag-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .src { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; padding: 2px 8px; border: 1.5px solid var(--ink); border-radius: 4px; transform: rotate(3deg); }
+  .src.thrifted { background: var(--pink); }
+  .src.gift { background: var(--sun); }
+  .src.new { background: var(--tag); }
+  .tname { font-family: "Caveat", cursive; font-weight: 700; font-size: 32px; line-height: 1; margin: 8px 0 4px; overflow-wrap: anywhere; }
+  .paid { font-size: 13px; color: var(--ink-soft); }
+  .cpw { display: flex; align-items: baseline; gap: 10px; margin: 10px 0 4px; flex-wrap: wrap; }
+  .cpw .now { font-family: "Caveat", cursive; font-weight: 700; font-size: 46px; line-height: 1; color: var(--ink); }
+  .cpw .old { font-family: "Caveat", cursive; font-size: 28px; color: var(--tomato); text-decoration: line-through; text-decoration-thickness: 2px; transform: rotate(-4deg); display: inline-block; }
+  .cpw .per { font-size: 12px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 1px; }
+  .meter-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-soft); margin-top: 8px; }
+  .meter { height: 12px; border: 2px solid var(--ink); border-radius: 6px; overflow: hidden; margin-top: 4px; background: var(--tag); }
+  .meter i { display: block; height: 100%; background: var(--tangerine); border-right: 2px solid var(--ink); }
+  .meter.done i { background: var(--leaf); border-right: 0; }
+  .ghost-note { margin-top: 8px; font-size: 12px; color: var(--tomato); text-transform: uppercase; letter-spacing: 1px; }
+  .actions { display: flex; gap: 8px; margin-top: 14px; align-items: center; }
+  .btn {
+    cursor: pointer; border: 2px solid var(--ink); border-radius: 8px; padding: 6px 12px;
+    background: var(--tag); box-shadow: 2px 2px 0 var(--ink); transition: transform .08s ease, box-shadow .08s ease;
+    white-space: nowrap;
+  }
+  .btn:active { transform: translate(2px, 2px); box-shadow: 0 0 0 var(--ink); }
+  .btn.primary { background: var(--tomato); color: #fff; font-family: "Caveat", cursive; font-weight: 700; font-size: 21px; line-height: 1; padding: 8px 10px; flex: 1; }
+  .btn.small { font-size: 12px; padding: 4px 8px; }
+  .btn.armed { background: var(--ink); color: var(--paper); }
+
+  /* worn stamp animation */
+  .tag.just::after {
+    content: "worn!"; position: absolute; right: 12px; top: 40px;
+    font-family: "Special Elite", monospace; text-transform: uppercase; letter-spacing: 2px; font-size: 16px;
+    color: var(--tomato); border: 3px solid var(--tomato); border-radius: 6px; padding: 2px 8px;
+    transform: rotate(-14deg); animation: stamp .45s ease-out both; pointer-events: none; background: rgba(255,255,255,.85);
+  }
+  @keyframes stamp { from { opacity: 0; transform: rotate(-14deg) scale(2.2); } to { opacity: 1; transform: rotate(-14deg) scale(1); } }
+
+  .empty { grid-column: 1 / -1; text-align: center; padding: 40px 10px; font-family: "Caveat", cursive; font-size: 32px; }
+  .closet-foot { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 34px; }
+
+  /* ---------- forms ---------- */
+  form { display: grid; gap: 12px; }
+  .field { display: grid; gap: 4px; }
+  .field input, .field select { width: 100%; background: #fff; border: 2px solid var(--ink); border-radius: 8px; padding: 8px 10px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .status { min-height: 1.5em; font-size: 13px; color: var(--leaf); margin: 0; }
+  .calc { background: var(--sun); }
+  .verdict { margin-top: 14px; padding: 12px 14px; border: 2px dashed var(--ink); border-radius: 8px; background: rgba(255,255,255,.7); }
+  .verdict .big { font-family: "Caveat", cursive; font-weight: 700; font-size: 40px; line-height: 1; }
+  .verdict .word { display: inline-block; margin-top: 6px; padding: 2px 10px; border-radius: 4px; color: #fff; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
+  .word.good { background: var(--leaf); }
+  .word.meh { background: #A8520E; }
+  .word.bad { background: var(--tomato); }
+
+  /* ---------- footer ---------- */
+  footer { margin-top: 56px; border-top: 2px dashed rgba(42,26,18,.4); padding-top: 22px; display: grid; grid-template-columns: 1.3fr 1fr; gap: 28px; font-size: 14px; }
+  footer .fact { font-family: "Caveat", cursive; font-size: 28px; line-height: 1.15; margin: 0 0 6px; }
+  footer a { color: var(--tomato); }
+  .how { color: var(--ink-soft); margin: 0; }
+
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  @media (max-width: 920px) {
+    .layout { grid-template-columns: 1fr; }
+    aside { position: static; }
+    .report { grid-template-columns: repeat(2, 1fr); }
+    .stat:nth-child(2) { border-right: 0; }
+    .stat:nth-child(-n+2) { border-bottom: 2px dashed rgba(42,26,18,.35); }
+    footer { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 520px) {
+    .wrap { padding: 24px 16px 40px; }
+    header { align-items: flex-start; }
+    .stamp { width: 92px; height: 92px; font-size: 10px; }
+    .stat .val { font-size: 36px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>cost <em>per</em> wear</h1>
+      <p class="sub">A little closet ledger. Log what you wear, watch each piece get cheaper, and catch the clothes you forgot you own.</p>
+    </div>
+    <div class="stamp" aria-hidden="true">wear<br>what you<br>already<br>own</div>
+  </header>
+
+  <section class="card report" aria-label="Closet report card">
+    <div class="stat"><span class="label">spent on closet</span><span class="val" id="s-spent">$0</span><span class="note" id="s-items">0 pieces</span></div>
+    <div class="stat"><span class="label">avg cost per wear</span><span class="val" id="s-avg">-</span><span class="note" id="s-wears">0 wears logged</span></div>
+    <div class="stat"><span class="label">most worn</span><span class="val" id="s-top">-</span><span class="note" id="s-topn"></span></div>
+    <div class="stat"><span class="label">secondhand</span><span class="val" id="s-second">0%</span><span class="note">thrifted or gifted</span></div>
+  </section>
+
+  <div class="layout">
+    <main>
+      <section class="card ghosts" id="ghosts" aria-labelledby="ghost-title" hidden>
+        <h2 id="ghost-title">closet ghosts</h2>
+        <p class="lead" id="ghost-lead"></p>
+        <ul class="ghost-list" id="ghost-list"></ul>
+      </section>
+
+      <section aria-labelledby="closet-title">
+        <div class="closet-head">
+          <h2 id="closet-title">the closet</h2>
+          <label>
+            <span class="sr">Sort by</span>
+            <select id="sort" aria-label="Sort clothes">
+              <option value="recent">newest first</option>
+              <option value="cpw-high">highest cost per wear</option>
+              <option value="cpw-low">lowest cost per wear</option>
+              <option value="least">least worn</option>
+            </select>
+          </label>
+        </div>
+        <div class="chips" id="chips" role="group" aria-label="Filter by category"></div>
+        <div class="closet" id="closet" aria-live="polite"></div>
+        <div class="closet-foot">
+          <button class="btn small" id="load-sample" type="button">load sample closet</button>
+          <button class="btn small" id="clear-all" type="button">start my own closet</button>
+        </div>
+      </section>
+    </main>
+
+    <aside>
+      <section class="card" aria-labelledby="add-title">
+        <h2 id="add-title">add to closet</h2>
+        <form id="add-form" novalidate>
+          <div class="field">
+            <label class="label" for="f-name">what is it?</label>
+            <input id="f-name" name="name" type="text" maxlength="40" placeholder="e.g. corduroy jacket" required>
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label class="label" for="f-cat">category</label>
+              <select id="f-cat" name="cat"></select>
+            </div>
+            <div class="field">
+              <label class="label" for="f-price">price ($)</label>
+              <input id="f-price" name="price" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" required>
+            </div>
+          </div>
+          <div class="field">
+            <label class="label" for="f-src">how did you get it?</label>
+            <select id="f-src" name="source">
+              <option value="new">bought new</option>
+              <option value="thrifted">thrifted</option>
+              <option value="gift">gift / hand-me-down</option>
+            </select>
+          </div>
+          <button class="btn primary" type="submit">+ hang it up</button>
+          <p class="status" id="add-status" role="status"></p>
+        </form>
+      </section>
+
+      <section class="card calc" aria-labelledby="calc-title">
+        <h2 id="calc-title">before you buy</h2>
+        <form id="calc-form" onsubmit="return false">
+          <div class="row2">
+            <div class="field">
+              <label class="label" for="c-price">price ($)</label>
+              <input id="c-price" type="number" min="0" step="0.01" inputmode="decimal" placeholder="40">
+            </div>
+            <div class="field">
+              <label class="label" for="c-wears">honest wears</label>
+              <input id="c-wears" type="number" min="1" step="1" inputmode="numeric" placeholder="10">
+            </div>
+          </div>
+        </form>
+        <div class="verdict" id="verdict" aria-live="polite">
+          <span class="label">enter a price and how many times you'd really wear it</span>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <footer>
+    <div>
+      <p class="fact">In 2018 the U.S. sent 11.3 million tons of textiles to landfills, and only 14.7% of textiles were recycled.</p>
+      <span>Source: <a href="https://www.epa.gov/facts-and-figures-about-materials-waste-and-recycling/textiles-material-specific-data" target="_blank" rel="noopener">U.S. EPA, Textiles: Material-Specific Data</a></span>
+    </div>
+    <p class="how">How it works: cost per wear = price &divide; times worn. Every piece aims for 30 wears. Anything unworn for 30 days becomes a closet ghost. Your closet is saved in this browser only.</p>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var KEY = "cpw-closet-v1";
+  var DAY = 86400000;
+  var GOAL = 30;
+  var GHOST_DAYS = 30;
+  var CATS = ["tops", "bottoms", "outerwear", "shoes", "accessories"];
+  var TIPS = [
+    "restyle it with something you love",
+    "swap it with a friend",
+    "mend or tailor it",
+    "resell it so someone wears it",
+    "donate it"
+  ];
+
+  function seed() {
+    var now = Date.now();
+    function item(id, name, cat, price, source, wears, lastAgo, addedAgo) {
+      return { id: id, name: name, cat: cat, price: price, source: source, wears: wears,
+        lastWorn: lastAgo == null ? null : now - lastAgo * DAY, added: now - addedAgo * DAY, prevCpw: null };
+    }
+    return [
+      item("s1", "denim jacket", "outerwear", 45, "thrifted", 38, 2, 400),
+      item("s2", "white tee", "tops", 12, "new", 24, 1, 300),
+      item("s3", "black boots", "shoes", 120, "new", 61, 3, 700),
+      item("s4", "sequin top", "tops", 35, "new", 1, 74, 120),
+      item("s5", "wool sweater", "tops", 0, "gift", 15, 9, 380),
+      item("s6", "linen pants", "bottoms", 28, "thrifted", 6, 41, 200),
+      item("s7", "canvas tote", "accessories", 18, "new", 52, 1, 500),
+      item("s8", "graphic hoodie", "tops", 55, "new", 3, 33, 150)
+    ];
+  }
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) { var parsed = JSON.parse(raw); if (Array.isArray(parsed)) return parsed; }
+    } catch (e) {}
+    return seed();
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state.items)); } catch (e) {} }
+
+  var state = { items: load(), filter: "all", sort: "recent", justWorn: null };
+
+  var $ = function (id) { return document.getElementById(id); };
+  function money(n) { return "$" + n.toFixed(2); }
+  function money0(n) { return "$" + Math.round(n).toLocaleString(); }
+  function cpw(it) { return it.wears > 0 ? it.price / it.wears : null; }
+  function daysSince(t) { return Math.floor((Date.now() - t) / DAY); }
+  function idle(it) { return daysSince(it.lastWorn != null ? it.lastWorn : it.added); }
+  function isGhost(it) { return idle(it) >= GHOST_DAYS; }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]; }); }
+  function tipFor(it) { var h = 0; for (var i = 0; i < it.id.length; i++) h = (h * 31 + it.id.charCodeAt(i)) >>> 0; return TIPS[h % TIPS.length]; }
+
+  /* ---------- report card ---------- */
+  function renderStats() {
+    var items = state.items;
+    var spent = 0, wears = 0, top = null, second = 0;
+    items.forEach(function (it) {
+      spent += it.price; wears += it.wears;
+      if (!top || it.wears > top.wears) top = it;
+      if (it.source !== "new") second++;
+    });
+    $("s-spent").textContent = money0(spent);
+    $("s-items").textContent = items.length + (items.length === 1 ? " piece" : " pieces");
+    $("s-avg").textContent = wears ? money(spent / wears) : "-";
+    $("s-wears").textContent = wears + (wears === 1 ? " wear logged" : " wears logged");
+    $("s-top").textContent = top && top.wears ? top.name : "-";
+    $("s-topn").textContent = top && top.wears ? top.wears + " wears" : "";
+    $("s-second").textContent = items.length ? Math.round(second / items.length * 100) + "%" : "0%";
+  }
+
+  /* ---------- ghosts ---------- */
+  function renderGhosts() {
+    var ghosts = state.items.filter(isGhost).sort(function (a, b) { return idle(b) - idle(a); });
+    var box = $("ghosts");
+    if (!ghosts.length) { box.hidden = true; return; }
+    box.hidden = false;
+    $("ghost-lead").textContent = ghosts.length === 1
+      ? "1 piece hasn't been worn in a month. Give it another life before buying something new."
+      : ghosts.length + " pieces haven't been worn in a month. Give them another life before buying something new.";
+    $("ghost-list").innerHTML = ghosts.map(function (it) {
+      return '<li><div><div class="gname">' + esc(it.name) + '</div><div class="gtip">' +
+        idle(it) + ' days untouched &middot; idea: ' + tipFor(it) + '</div></div>' +
+        '<button class="btn small" type="button" data-action="wear" data-id="' + esc(it.id) + '">wore it</button></li>';
+    }).join("");
+  }
+
+  /* ---------- closet ---------- */
+  function renderChips() {
+    var cats = ["all"].concat(CATS);
+    $("chips").innerHTML = cats.map(function (c) {
+      return '<button class="chip" type="button" data-cat="' + c + '" aria-pressed="' + (state.filter === c) + '">' + c + '</button>';
+    }).join("");
+  }
+
+  function sorted(list) {
+    var l = list.slice();
+    var s = state.sort;
+    if (s === "recent") l.sort(function (a, b) { return b.added - a.added; });
+    if (s === "least") l.sort(function (a, b) { return a.wears - b.wears; });
+    // unworn pieces (no cost per wear yet) count as the worst value
+    if (s === "cpw-high") l.sort(function (a, b) {
+      var x = cpw(a), y = cpw(b);
+      if (x === null) return y === null ? 0 : -1;
+      if (y === null) return 1;
+      return y - x;
+    });
+    if (s === "cpw-low") l.sort(function (a, b) {
+      var x = cpw(a), y = cpw(b);
+      if (x === null) return y === null ? 0 : 1;
+      if (y === null) return -1;
+      return x - y;
+    });
+    return l;
+  }
+
+  function tagHTML(it) {
+    var c = cpw(it);
+    var pct = Math.min(100, Math.round(it.wears / GOAL * 100));
+    var done = it.wears >= GOAL;
+    var old = (it.prevCpw != null && c != null && Math.abs(it.prevCpw - c) > 0.004)
+      ? '<span class="old" aria-label="was ' + money(it.prevCpw) + '">' + money(it.prevCpw) + '</span>' : "";
+    var srcLabel = it.source === "gift" ? "gift" : it.source;
+    return '<article class="tag' + (isGhost(it) ? " ghost" : "") + (state.justWorn === it.id ? " just" : "") + '" data-id="' + esc(it.id) + '">' +
+      '<div class="tag-top"><span class="label">' + esc(it.cat) + '</span><span class="src ' + esc(it.source) + '">' + esc(srcLabel) + '</span></div>' +
+      '<h3 class="tname">' + esc(it.name) + '</h3>' +
+      '<div class="paid">paid ' + money(it.price) + ' &middot; worn ' + it.wears + '&times;</div>' +
+      '<div class="cpw">' + old + '<span class="now">' + (c === null ? "&ndash;" : money(c)) + '</span><span class="per">' + (c === null ? "wear it once!" : "per wear") + '</span></div>' +
+      '<div class="meter-row"><span>' + (done ? "earned its keep" : "goal: " + GOAL + " wears") + '</span><span>' + Math.min(it.wears, GOAL) + '/' + GOAL + '</span></div>' +
+      '<div class="meter' + (done ? " done" : "") + '" role="progressbar" aria-label="Wears toward goal" aria-valuemin="0" aria-valuemax="' + GOAL + '" aria-valuenow="' + Math.min(it.wears, GOAL) + '"><i style="width:' + pct + '%"></i></div>' +
+      (isGhost(it) ? '<div class="ghost-note">unworn ' + idle(it) + ' days</div>' : "") +
+      '<div class="actions">' +
+        '<button class="btn primary" type="button" data-action="wear" data-id="' + esc(it.id) + '">wore it today</button>' +
+        '<button class="btn small" type="button" data-action="unwear" data-id="' + esc(it.id) + '" aria-label="Remove one wear from ' + esc(it.name) + '"' + (it.wears ? "" : " disabled") + '>&minus;1</button>' +
+        '<button class="btn small" type="button" data-action="remove" data-id="' + esc(it.id) + '" aria-label="Remove ' + esc(it.name) + ' from closet">&times;</button>' +
+      '</div>' +
+    '</article>';
+  }
+
+  function renderCloset() {
+    var list = state.items.filter(function (it) { return state.filter === "all" || it.cat === state.filter; });
+    var box = $("closet");
+    if (!state.items.length) { box.innerHTML = '<p class="empty">your closet is empty. hang up your first piece &rarr;</p>'; return; }
+    if (!list.length) { box.innerHTML = '<p class="empty">nothing in ' + esc(state.filter) + ' yet.</p>'; return; }
+    box.innerHTML = sorted(list).map(tagHTML).join("");
+  }
+
+  function render() { renderStats(); renderGhosts(); renderChips(); renderCloset(); }
+
+  /* ---------- actions ---------- */
+  function find(id) { for (var i = 0; i < state.items.length; i++) if (state.items[i].id === id) return state.items[i]; return null; }
+
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest("button");
+    if (!btn) return;
+
+    if (btn.dataset.cat) { state.filter = btn.dataset.cat; renderChips(); renderCloset(); return; }
+
+    var action = btn.dataset.action, id = btn.dataset.id;
+    if (!action) return;
+    var it = find(id);
+    if (!it) return;
+
+    if (action === "wear") {
+      it.prevCpw = cpw(it);
+      it.wears += 1;
+      it.lastWorn = Date.now();
+      state.justWorn = it.id;
+      save(); render();
+      setTimeout(function () { if (state.justWorn === it.id) state.justWorn = null; }, 600);
+    }
+    if (action === "unwear" && it.wears > 0) {
+      it.wears -= 1; it.prevCpw = null; state.justWorn = null;
+      save(); render();
+    }
+    if (action === "remove") {
+      if (btn.classList.contains("armed")) {
+        state.items = state.items.filter(function (x) { return x.id !== id; });
+        save(); render();
+      } else {
+        btn.classList.add("armed"); btn.textContent = "sure?";
+        setTimeout(function () { if (document.body.contains(btn)) { btn.classList.remove("armed"); btn.innerHTML = "&times;"; } }, 2500);
+      }
+    }
+  });
+
+  $("sort").addEventListener("change", function (e) { state.sort = e.target.value; renderCloset(); });
+
+  $("load-sample").addEventListener("click", function () { state.items = seed(); state.filter = "all"; save(); render(); });
+  $("clear-all").addEventListener("click", function () {
+    var b = $("clear-all");
+    if (b.classList.contains("armed")) {
+      state.items = []; state.filter = "all"; save(); render();
+      b.classList.remove("armed"); b.textContent = "start my own closet";
+      $("f-name").focus();
+    } else {
+      b.classList.add("armed"); b.textContent = "click again to empty the closet";
+      setTimeout(function () { b.classList.remove("armed"); b.textContent = "start my own closet"; }, 3000);
+    }
+  });
+
+  /* ---------- add form ---------- */
+  $("f-cat").innerHTML = CATS.map(function (c) { return '<option value="' + c + '">' + c + '</option>'; }).join("");
+  $("add-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var name = $("f-name").value.trim();
+    var price = parseFloat($("f-price").value);
+    var status = $("add-status");
+    status.style.color = "";
+    if (!name) { status.style.color = "var(--tomato)"; status.textContent = "give it a name first."; $("f-name").focus(); return; }
+    if (isNaN(price) || price < 0) { status.style.color = "var(--tomato)"; status.textContent = "add a price (0 is fine for gifts)."; $("f-price").focus(); return; }
+    state.items.push({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      name: name, cat: $("f-cat").value, price: Math.round(price * 100) / 100, source: $("f-src").value,
+      wears: 0, lastWorn: null, added: Date.now(), prevCpw: null
+    });
+    save();
+    state.sort = "recent"; $("sort").value = "recent";
+    render();
+    status.textContent = name + " is hanging in your closet.";
+    e.target.reset();
+    $("f-name").focus();
+  });
+
+  /* ---------- before you buy ---------- */
+  function calc() {
+    var p = parseFloat($("c-price").value), w = parseInt($("c-wears").value, 10);
+    var out = $("verdict");
+    if (isNaN(p) || p < 0 || isNaN(w) || w < 1) {
+      out.innerHTML = '<span class="label">enter a price and how many times you\'d really wear it</span>';
+      return;
+    }
+    var c = p / w, word, cls;
+    if (c <= 1) { word = "a keeper"; cls = "good"; }
+    else if (c <= 3) { word = "only if you love it"; cls = "meh"; }
+    else { word = "think twice"; cls = "bad"; }
+    var need = Math.ceil(p);
+    out.innerHTML = '<span class="label">that works out to</span><div class="big">' + money(c) + ' a wear</div>' +
+      '<span class="word ' + cls + '">' + word + '</span>' +
+      (p > 0 ? '<div class="label" style="margin-top:8px">to get it under $1 a wear, you\'d need ' + need + ' wears</div>' : "");
+  }
+  $("c-price").addEventListener("input", calc);
+  $("c-wears").addEventListener("input", calc);
+
+  render();
+})();
+</script>
+</body>
+</html>
